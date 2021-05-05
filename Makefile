@@ -6,4 +6,9 @@ COPTS =	-Wall
 test:
 	cd ${.CURDIR}/tests && ${.MAKE}
 
+all: README.md
+README.md: tlc.1
+	mandoc -Tmarkdown tlc.1 >$@
+	sed -i '$$ d' $@
+
 .include <bsd.prog.mk>
