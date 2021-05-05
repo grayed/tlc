@@ -269,7 +269,7 @@ proceed_file(FILE *f, long long *lineno) {
 	for (;;) {
 		pfd[0].revents = 0;
 		if (pt) {
-			clock_gettime(CLOCK_UPTIME, &now);
+			clock_gettime(CLOCK_MONOTONIC, &now);
 			timespecsub(&next, &now, pt);
 			if (timespeccmp(pt, &ts_zero, <))
 				timespecclear(pt);
@@ -283,7 +283,7 @@ proceed_file(FILE *f, long long *lineno) {
 			break;
 		}
 
-		clock_gettime(CLOCK_UPTIME, &now);
+		clock_gettime(CLOCK_MONOTONIC, &now);
 		if (pt)
 			timespecadd(&now, &interval, &next);
 
@@ -358,7 +358,7 @@ main(int argc, char *argv[]) {
 	if ((out_str = format_line(&out_str_len, lineno, "", 0)) == NULL)
 		err(1, "format_line");
 	display_line(out_str, out_str_len);
-	clock_gettime(CLOCK_UPTIME, &now);
+	clock_gettime(CLOCK_MONOTONIC, &now);
 
 	proceed_file(stdin, &lineno);
 
