@@ -1,0 +1,96 @@
+.\"	$OpenBSD$
+.\"
+.\"
+.\" Copyright (c) 2021 Vadim Zhukov <zhuk@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: May 5 2021 $
+.Dt TLC 1
+.Os
+.Sh NAME
+.Nm tlc
+.Nd count input line interactively
+.Sh SYNOPSIS
+.Nm tlc
+.Op Fl fp
+.Op Fl i Ar interval
+.Op Fl s Ar start
+.Op Ar text
+.Sh DESCRIPTION
+The
+.Nm
+utility reads lines from standard input and, by default,
+regularly updates summary line with increasing count of lines read
+on standard error descriptor.
+.Pp
+If
+.Ar text
+is specified, it is appended to summary line.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl f
+Makes
+.Ar text
+interpreted as format string to be used for displaing summary.
+The following format codes are supported:
+.Bl -tag -width ws
+.It %%
+Encodes single percent sign.
+.It %i
+Replaced with number of lines read.
+.It %s
+Replaced with last line read; empty if no lines were read yet.
+.El
+Every other combination of percent sign and some character will
+result in outputting them literally.
+.It Fl i Ar interval
+Sets minimal number of seconds between summary line updates to
+.Ar interval .
+This helps to avoid flickering due too often screen updates.
+If set to zero, screen will be updated upon each input line read.
+Default value is 1 second.
+.It Fl p
+Enables passthrough mode: every input line gets duplicated on
+standard output.
+.It Fl s Ar start
+Sets initial value of lines read to
+.Ar start .
+Defaults to 0.
+.El
+.Sh EXIT STATUS
+.Ex -std tlc
+.Sh EXAMPLES
+Show file removal progress:
+.Bd -literal -offset indent
+$ rm -Rv foo | tlc 'files removed'
+42 files removed...
+.Ed
+.Pp
+and eventually the line above will evolve into:
+.Bd -literal -offset indent
+1764 files removed.
+.Ed
+.Pp
+Same with more details and logging to the file:
+.Bd -literal -offset indent
+$ rm -Rv foo | tlc -fp '%i files removed, last: %s' >rm.log
+.Ed
+.Sh SEE ALSO
+.Xr getline 3
+.Sh AUTHORS
+.An -nosplit
+.Nm at
+was written by
+.An Vadim Zhukov Aq Mt zhuk@openbsd.org .

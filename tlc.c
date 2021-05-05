@@ -1,0 +1,381 @@
+/*
+ * Copyright (c) 2021 Vadim Zhukov <zhuk@openbsd.org>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <sys/types.h>
+#include <sys/time.h>
+#include <err.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <poll.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#ifndef __dead
+#define __dead
+#endif
+
+// user-defined parameters
+bool		 debug, use_format, passthrough;
+struct timespec	 interval = { 1, 0 };
+char		*fmts;
+
+struct timespec	 now;
+const char	 nl = '\n';
+
+// Line to be displayed after timeout.
+// Managed by queue_line() and proceed_queued().
+char		*queued_str;
+size_t		 queued_len;	// cached length of queued_str
+struct timespec	 ts_last_upd;	// time of last (queued) line output
+struct timespec	 ts_zero;
+
+// Last output string went to stderr. Set & freed by display_line().
+char		*last_out_str;	
+size_t		 last_out_len;	// cached length of last_out_str
+
+// NOT strings; used to avoid calling write() many times
+char		*blanks;	// filled by spaces at least as long as queued
+char		*backspaces;	// filled by \b at least as long as queued
+
+
+__dead void
+usage(const char *errmsg) {
+	if (errmsg)
+		dprintf(STDERR_FILENO, "%s\n", errmsg);
+	dprintf(STDERR_FILENO,
+	    "usage: %s [-fp] [-i interval] [-s start] [text]\n", getprogname());
+	exit(1);
+}
+
+void
+resize_b(char **b, size_t newsize, int ch) {
+	char	*newb;
+
+	if ((newb = realloc(*b, newsize)) == NULL)
+		err(1, __func__);
+	memset(newb, ch, newsize);
+	*b = newb;
+}
+
+void
+adjust_bnb(size_t minsize) {
+	static size_t	 bsize;
+
+	if (minsize <= bsize)
+		return;
+	resize_b(&blanks, minsize, ' ');
+	resize_b(&backspaces, minsize, '\b');
+	bsize = minsize;
+}
+
+void
+display_line(char *line, size_t len) {
+	free(last_out_str);
+	adjust_bnb(last_out_len);
+	write(STDERR_FILENO, backspaces, last_out_len);
+	write(STDERR_FILENO, blanks, last_out_len);
+	write(STDERR_FILENO, backspaces, last_out_len);
+	if (len) {
+		if (debug) {
+			printf("[% 7lld.%09lld] %s: writing '%s' (old one was %zu length)\n",
+			    (long long)now.tv_sec, (long long)now.tv_nsec,
+			    __func__, line, last_out_len);
+		}
+		write(STDERR_FILENO, line, len);
+	} else if (debug) {
+		printf("[% 7lld.%09lld] %s: asked to write empty line (old one was %zu length)\n",
+		    (long long)now.tv_sec, (long long)now.tv_nsec,
+		    __func__, last_out_len);
+	}
+	last_out_len = len;
+	last_out_str = line;
+}
+
+char *
+format_line(size_t *linelen, long long lineno, const char *cur_str, size_t cur_str_len) {
+	int	 lineno_len;
+	char	*out_str, lineno_str[64];
+
+	lineno_len = snprintf(lineno_str, sizeof(lineno_str), "%lld", lineno);
+
+	if (use_format) {
+		size_t	 i, reslen = 0;
+		char	*p;
+		bool	 pct = false;
+
+		for (reslen = i = 0; fmts[i]; i++) {
+			if (pct) {
+				pct = false;
+				switch (fmts[i]) {
+				case 'i':	reslen += lineno_len; break;
+				case 's':	reslen += cur_str_len; break;
+				case '%':	reslen++; break;
+				default:	reslen += 2; break;
+				}
+			} else {
+				if (fmts[i] == '%')
+					pct = true;
+				else
+					reslen++;
+			}
+		}
+		if (pct) {
+			reslen++;
+			pct = false;
+		}
+
+		if ((out_str = malloc(reslen + 1)) == NULL)
+			return NULL;
+
+		p = out_str;
+		for (i = 0; fmts[i]; i++) {
+			if (pct) {
+				pct = false;
+				switch (fmts[i]) {
+				case 'i':
+					memcpy(p, lineno_str, lineno_len);
+					p += lineno_len;
+					break;
+				case 's':
+					memcpy(p, cur_str, cur_str_len);
+					p += cur_str_len;
+					break;
+				case '%':
+					*p++ = fmts[i];
+					break;
+				default:
+					*p++ = '%';
+					*p++ = fmts[i];
+				}
+			} else {
+				if (fmts[i] == '%')
+					pct = true;
+				else
+					*p++ = fmts[i];
+			}
+		}
+		if (pct)
+			*p++ = '%';
+		*p = '\0';
+		*linelen = reslen;
+	} else {
+		int	res;
+
+		res = asprintf(&out_str, "%s%s...", lineno_str, fmts);
+		if (res == -1)
+			return NULL;
+		*linelen = (size_t)res;
+	}
+
+	return out_str;
+}
+
+void
+proceed_queued() {
+	struct timespec	diff;
+
+	if (queued_str == NULL)
+		return;
+	timespecsub(&now, &ts_last_upd, &diff);
+	if (timespeccmp(&diff, &interval, >=)) {
+		display_line(queued_str, queued_len);
+		// queued_str moved to last_out_str at this point
+		queued_str = NULL;;
+		queued_len = 0;
+		ts_last_upd = now;
+	}
+}
+
+void
+queue_line(char *line, size_t linelen) {
+	free(queued_str);
+	if (!line || !last_out_str || strcmp(line, last_out_str) != 0) {
+		queued_str = line;
+		queued_len = linelen;
+	} else {
+		queued_str = NULL;
+		queued_len = 0;
+	}
+}
+
+void
+proceed_input(FILE *f, long long *lineno) {
+	size_t	 linelen, out_str_len, linesize = 0;
+	char	*line = NULL, *out_str;
+
+	while ((linelen = getline(&line, &linesize, f)) != (size_t)-1) {
+		(*lineno)++;
+
+		if (passthrough)
+			fputs(line, stdout);
+
+		if (line[linelen - 1] == '\n')
+			line[--linelen] = '\0';
+
+		if ((out_str = format_line(&out_str_len, *lineno, line, linelen)) == NULL)
+			err(1, __func__);
+		if (timespecisset(&interval))
+			queue_line(out_str, out_str_len);
+		else {
+			if (!last_out_str || strcmp(out_str, last_out_str) != 0)
+				display_line(out_str, out_str_len);
+			else
+				free(out_str);
+		}
+	}
+	free(line);
+}
+
+void
+proceed_file(FILE *f, long long *lineno) {
+	struct pollfd	pfd[1];
+	struct timespec	timeout, *pt, next;
+	int		fd, flags, nready;
+
+	fd = fileno(f);
+	if ((flags = fcntl(fd, F_GETFL)) == -1)
+		err(1, "fcntl(F_GETFL)");
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) == -1)
+		err(1, "fcntl(F_SETFL)");
+	pfd[0].fd = fd;
+	pfd[0].events = POLLIN;
+
+	if (timespecisset(&interval)) {
+		timeout = interval;
+		pt = &timeout;
+		timespecadd(&now, &interval, &next);
+	} else
+		pt = NULL;
+
+	for (;;) {
+		pfd[0].revents = 0;
+		if (pt) {
+			clock_gettime(CLOCK_UPTIME, &now);
+			timespecsub(&next, &now, pt);
+			if (timespeccmp(pt, &ts_zero, <))
+				timespecclear(pt);
+		}
+
+		nready = ppoll(pfd, 1, pt, NULL);
+		if (nready == -1) {
+			if (errno == EINTR)
+				continue;
+			warn("ppoll");
+			break;
+		}
+
+		clock_gettime(CLOCK_UPTIME, &now);
+		if (pt)
+			timespecadd(&now, &interval, &next);
+
+		if (nready) {
+			if ((pfd[0].revents & POLLIN) == POLLIN)
+				proceed_input(f, lineno);
+			if ((pfd[0].revents & POLLHUP) == POLLHUP)
+				break;
+			if ((pfd[0].revents & POLLERR) == POLLERR)
+				break;
+		}
+		if (timespecisset(&interval))
+			proceed_queued();
+	}
+}
+
+int
+main(int argc, char *argv[]) {
+	long long	 lineno = 0;
+	size_t		 out_str_len;
+	unsigned long	 ul;
+	int		 ch;
+	char		*ep, *out_str;
+
+	while ((ch = getopt(argc, argv, /*"d"*/ "fi:ps:")) != -1) {
+		switch(ch) {
+		case 'd':
+			debug = true;
+			break;
+		case 'f':
+			use_format = true;
+			break;
+		case 'i':
+			ul = strtoul(optarg, &ep, 10);
+			if (ul > INT_MAX)
+				usage("interval is too large");
+			if (*ep || ep == optarg)
+				usage("invalid interval");
+			interval.tv_sec = (time_t)ul;
+			break;
+		case 'p':
+			passthrough = true;
+			break;
+		case 's':
+			lineno = strtoll(optarg, &ep, 10);
+			if (*ep || ep == optarg)
+				usage("invalid start value");
+			break;
+		default:
+			usage(NULL);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (argc > 1)
+		usage(NULL);
+
+	if (use_format) {
+		if (argc == 0)
+			usage("format text is required when -f is set");
+		fmts = argc ? argv[0] : "";
+	} else {
+		if (argc) {
+			if (asprintf(&fmts, " %s", argv[0]) == -1)
+				err(1, "%s: asprintf", __func__);
+		} else
+			fmts = "";
+	}
+
+	// display initial result line, e.g. "0 lines seen"
+	if ((out_str = format_line(&out_str_len, lineno, "", 0)) == NULL)
+		err(1, "format_line");
+	display_line(out_str, out_str_len);
+	clock_gettime(CLOCK_UPTIME, &now);
+
+	proceed_file(stdin, &lineno);
+
+	if (queued_str)
+		display_line(queued_str, queued_len);
+	if (!use_format) {
+		adjust_bnb(2);
+		write(STDERR_FILENO, backspaces, 2);
+		write(STDERR_FILENO, blanks, 2);
+		write(STDERR_FILENO, backspaces, 2);
+	}
+	write(STDERR_FILENO, &nl, 1);
+	free(last_out_str);
+	free(blanks);
+	free(backspaces);
+	if (!use_format && argc)
+		free(fmts);
+
+	return 0;
+}

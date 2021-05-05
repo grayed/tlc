@@ -1,0 +1,18 @@
+# CMake build
+build
+
+# Make build
+obj
+
+# Usual C artifacts
+*.d
+*.o
+*.obj
+
+# Resulting binary
+tlc
+
+# Tests junk
+*.stdout
+*.stderr
+02.expectedout
