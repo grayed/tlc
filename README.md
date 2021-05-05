@@ -92,6 +92,7 @@ getline(3)
 
 # AUTHORS
 
-**at**
+**tlc**
 was written by
 Vadim Zhukov &lt;[zhuk@openbsd.org](mailto:zhuk@openbsd.org)&gt;.
+
