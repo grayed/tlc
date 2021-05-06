@@ -32,9 +32,10 @@
 #include "compat.h"
 
 // user-defined parameters
-bool		 debug, use_format, passthrough;
+bool		 debug, has_end_value, use_format, passthrough;
 struct timespec	 interval = { 1, 0 };
 char		*fmts;
+long long	 start_value, end_value;
 
 struct timespec	 now;
 const char	 nl = '\n';
@@ -60,7 +61,8 @@ usage(const char *errmsg) {
 	if (errmsg)
 		dprintf(STDERR_FILENO, "%s\n", errmsg);
 	dprintf(STDERR_FILENO,
-	    "usage: %s [-fp] [-i interval] [-s start] [text]\n", getprogname());
+	    "usage: %s [-fp] [-e end] [-i interval] [-s start] [text]\n",
+	    getprogname());
 	exit(1);
 }
 
@@ -110,10 +112,22 @@ display_line(char *line, size_t len) {
 
 char *
 format_line(size_t *linelen, long long lineno, const char *cur_str, size_t cur_str_len) {
-	int	 lineno_len;
-	char	*out_str, lineno_str[64];
+	int	 lineno_len, progress_len;
+	char	*out_str, lineno_str[64], progress_str[64];
 
 	lineno_len = snprintf(lineno_str, sizeof(lineno_str), "%lld", lineno);
+
+	if (has_end_value) {
+		long long	 progress;
+
+		progress = (lineno - start_value) * 100;
+		progress /= end_value - start_value;
+		progress_len = snprintf(progress_str, sizeof(progress_str),
+		    "%lld", progress);
+	} else {
+		progress_str[0] = '\0';
+		progress_len = 0;
+	}
 
 	if (use_format) {
 		size_t	 i, reslen = 0;
@@ -125,6 +139,7 @@ format_line(size_t *linelen, long long lineno, const char *cur_str, size_t cur_s
 				pct = false;
 				switch (fmts[i]) {
 				case 'i':	reslen += lineno_len; break;
+				case 'p':	reslen += progress_len; break;
 				case 's':	reslen += cur_str_len; break;
 				case '%':	reslen++; break;
 				default:	reslen += 2; break;
@@ -153,6 +168,10 @@ format_line(size_t *linelen, long long lineno, const char *cur_str, size_t cur_s
 					memcpy(p, lineno_str, lineno_len);
 					p += lineno_len;
 					break;
+				case 'p':
+					memcpy(p, progress_str, progress_len);
+					p += progress_len;
+					break;
 				case 's':
 					memcpy(p, cur_str, cur_str_len);
 					p += cur_str_len;
@@ -178,7 +197,10 @@ format_line(size_t *linelen, long long lineno, const char *cur_str, size_t cur_s
 	} else {
 		int	res;
 
-		res = asprintf(&out_str, "%s%s...", lineno_str, fmts);
+		if (has_end_value)
+			res = asprintf(&out_str, "%s%%%s...", progress_str, fmts);
+		else
+			res = asprintf(&out_str, "%s%s...", lineno_str, fmts);
 		if (res == -1)
 			return NULL;
 		*linelen = (size_t)res;
@@ -320,10 +342,16 @@ main(int argc, char *argv[]) {
 	int		 ch;
 	char		*ep, *out_str;
 
-	while ((ch = getopt(argc, argv, /*"d"*/ "fi:ps:")) != -1) {
+	while ((ch = getopt(argc, argv, /*"d"*/ "e:fi:ps:")) != -1) {
 		switch(ch) {
 		case 'd':
 			debug = true;
+			break;
+		case 'e':
+			has_end_value = true;
+			end_value = strtoll(optarg, &ep, 10);
+			if (*ep || ep == optarg)
+				usage("invalid end value");
 			break;
 		case 'f':
 			use_format = true;
@@ -340,7 +368,7 @@ main(int argc, char *argv[]) {
 			passthrough = true;
 			break;
 		case 's':
-			lineno = strtoll(optarg, &ep, 10);
+			start_value = strtoll(optarg, &ep, 10);
 			if (*ep || ep == optarg)
 				usage("invalid start value");
 			break;
@@ -365,6 +393,10 @@ main(int argc, char *argv[]) {
 		} else
 			fmts = "";
 	}
+
+	if (has_end_value && end_value <= start_value)
+		usage("invalid combination of the start and end values");
+	lineno = start_value;
 
 	// display initial result line, e.g. "0 lines seen"
 	if ((out_str = format_line(&out_str_len, lineno, "", 0)) == NULL)

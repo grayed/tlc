@@ -21,6 +21,12 @@ ${EXPECTEDOUT_02}:
 CMDS_03 =	jot 10
 ARGS_03 =	-i 0
 
+CMDS_04 =	jot 1000
+ARGS_04 =	-e 100 'number lines'
+
+CMDS_05 =	jot 1000
+ARGS_05 =	-fe 100 '[%p%] lines'
+
 .PHONY:	gen
 
 .for _t in ${TESTS}

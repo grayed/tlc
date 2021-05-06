@@ -24,6 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl fp
+.Op Fl e Ar end
 .Op Fl i Ar interval
 .Op Fl s Ar start
 .Op Ar text
@@ -40,6 +41,18 @@ is specified, it is appended to summary line.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl e Ar end
+Display progress in terms of percents instead of line numbers.
+The 100% mark will be achivied upon reading
+.Ql end-start
+lines.
+Also enables the
+.Sq %p
+format code, see below.
+It is now allowed to set
+.Ar end
+less than or equal to
+.Ar start .
 .It Fl f
 Makes
 .Ar text
@@ -50,6 +63,13 @@ The following format codes are supported:
 Encodes single percent sign.
 .It %i
 Replaced with number of lines read.
+.It %p
+Replaced with progress value, like:
+.Ql 42
+(the percent sign is not included automatically).
+In case of absent
+.Ar end ,
+this format code does nothing.
 .It %s
 Replaced with last line read; empty if no lines were read yet.
 .El
@@ -68,6 +88,11 @@ standard output.
 Sets initial value of lines read to
 .Ar start .
 Defaults to 0.
+It is now allowed to set
+.Ar start
+larger than or equal to
+.Ar end ,
+unless the latter was not specified at all.
 .El
 .Sh EXIT STATUS
 .Ex -std tlc
