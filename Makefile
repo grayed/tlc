@@ -4,7 +4,7 @@ COPTS =	-Wall
 
 .include <bsd.prog.mk>
 
-all: README.md
+all: README.md manlint
 
 README.md: tlc.1
 	mandoc -Tmarkdown tlc.1 >$@
