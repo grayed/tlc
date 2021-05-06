@@ -377,10 +377,12 @@ main(int argc, char *argv[]) {
 	if (queued_str)
 		display_line(queued_str, queued_len);
 	if (!use_format) {
-		adjust_bnb(2);
-		write(STDERR_FILENO, backspaces, 2);
-		write(STDERR_FILENO, blanks, 2);
-		write(STDERR_FILENO, backspaces, 2);
+		size_t adjnum = (fmts[0] == '\0') ? 3 : 2;
+
+		adjust_bnb(adjnum);
+		write(STDERR_FILENO, backspaces, adjnum);
+		write(STDERR_FILENO, blanks, adjnum);
+		write(STDERR_FILENO, backspaces, adjnum);
 	}
 	write(STDERR_FILENO, &nl, 1);
 	free(last_out_str);
