@@ -79,4 +79,10 @@
 	} while (0)
 #endif
 
+/* Minor goo from sys/cdefs.h absent in libbsd */
+
+#ifndef __dead
+#define __dead	__attribute__((__noreturn__))
+#endif
+
 #endif
