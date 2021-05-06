@@ -1,4 +1,16 @@
 ====================
+v.1.1.0
+====================
+
+* COMPATIBILITY BREAK: Do not append trailing full stop at the end when
+  format string is absent.
+* Add '-e end' and %p format code, for displaying percent-based progress
+  instead of absolute line numbers.
+* OpenBSD Makefile now installs tlc under /usr/local, as intended.
+* Added GitHub CI workflow for Ubuntu.
+* Fix -p mode when input is paused not after newlines.
+
+====================
 v.1.0.1
 ====================
 
