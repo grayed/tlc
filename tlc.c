@@ -31,6 +31,14 @@
 
 #include "compat.h"
 
+struct input_state {
+	int	 fd;
+	char	*buf;
+	size_t	 allocated;
+	size_t	 available;	// number of actual data bytes in buf
+	size_t	 handled;	// number of bytes already handled
+};
+
 // user-defined parameters
 bool		 debug, has_end_value, use_format, passthrough;
 struct timespec	 interval = { 1, 0 };
@@ -237,30 +245,95 @@ queue_line(char *line, size_t linelen) {
 	}
 }
 
-void
-proceed_input(FILE *f, long long *lineno) {
-	size_t	 linelen, out_str_len, linesize = 0;
-	char	*line = NULL, *out_str;
+/*
+ * Return values:
+ *  -1 - error happened, see errno
+ *   0 - EOF
+ *   1 - try again later
+ */
+int
+proceed_input(struct input_state *ins, long long *lineno) {
+	size_t		 linelen, out_str_len;
+	char		*line, *out_str, *p;
 
-	while ((linelen = getline(&line, &linesize, f)) != (size_t)-1) {
-		// fix non-blocking problems on non-OpenBSD (e.g., Linux)
-		if (ferror(f) && errno == EAGAIN) {
-			while (linelen--)
-				if (ungetc(line[linelen], f) == EOF)
-					err(1, "ungetc");
-			break;
-		}
+/*
+ * Buffer layout and variable values:
+ *
+ *        |>line begins here   |>read(2) here  |>p points here... |>... or here
+ * [====\n=====================================\n=================]
+ *  ^buf  ^buf+handled         ^buf+available        buf+allocated^
+ */
+
+	for (;;) {
+		p = memchr(ins->buf + ins->handled, '\n', ins->available - ins->handled);
+		if (p == NULL) {
+			// try to read more data from fd
+			ssize_t	 nread;
+
+			if (ins->available == ins->allocated) {
+				size_t	 newsz;
+				char	*t;
+
+				if (ins->allocated == SSIZE_MAX) {
+					errno = EOVERFLOW;
+					return -1;
+				}
+
+				if (ins->allocated > SSIZE_MAX / 2)
+					newsz = SSIZE_MAX / 2;
+				else if (ins->allocated == 0)
+					newsz = PATH_MAX;	// Good Enough(TM)
+				else
+					newsz = ins->allocated * 2;
+
+				t = realloc(ins->buf, newsz);
+				if (t == NULL)
+					return -1;
+				ins->buf = t;
+				ins->allocated = newsz;
+			}
+
+			memmove(ins->buf, ins->buf + ins->handled,
+			    ins->available - ins->handled);
+			ins->available -= ins->handled;
+			ins->handled = 0;
+
+			nread = read(ins->fd, ins->buf + ins->available,
+			    ins->allocated - ins->available);
+			if (nread == -1)
+				return (errno == EAGAIN) ? 1 : -1;
+			if (nread == 0) {
+				if (ins->available == 0)
+					return 0;
+				// last line of input lacks '\n', be precious
+				p = ins->buf + ins->available;
+			} else {
+				p = memchr(ins->buf + ins->available, '\n', (size_t)nread);
+				if (p)
+					p++;	// include trailing '\n';
+				ins->available += (size_t)nread;
+			}
+		} else
+			p++;	// include trailing '\n';
+
+		if (p == NULL)
+			return 1;
 
 		(*lineno)++;
+		line = ins->buf + ins->handled;
+		linelen = (size_t)(p - line);
+		ins->handled += linelen;
+
+		// 'ins' should not be accessed directly in this loop cycle anymore
 
 		if (passthrough)
-			fputs(line, stdout);
+			fwrite(line, 1, linelen, stdout);	// check for error?
 
 		if (line[linelen - 1] == '\n')
 			line[--linelen] = '\0';
 
 		if ((out_str = format_line(&out_str_len, *lineno, line, linelen)) == NULL)
-			err(1, __func__);
+			return -1;
 		if (timespecisset(&interval))
 			queue_line(out_str, out_str_len);
 		else {
@@ -270,28 +343,26 @@ proceed_input(FILE *f, long long *lineno) {
 				free(out_str);
 		}
 	}
-
-	// fix non-blocking problems on non-OpenBSD (e.g., Linux)
-	if (ferror(f) && errno == EAGAIN)
-		clearerr(f);
-
-	free(line);
 }
 
 void
-proceed_file(FILE *f, long long *lineno) {
-	struct pollfd	pfd[1];
-	struct timespec	timeout, *pt, next;
-	int		fd, flags, nready;
+proceed_file(int fd, long long *lineno) {
+	struct pollfd		pfd[1];
+	struct timespec		timeout, *pt, next;
+	struct input_state	ins;
+	int			flags, nready;
 
-	fd = fileno(f);
 	if ((flags = fcntl(fd, F_GETFL)) == -1)
 		err(1, "fcntl(F_GETFL)");
 	flags |= O_NONBLOCK;
 	if (fcntl(fd, F_SETFL, flags) == -1)
 		err(1, "fcntl(F_SETFL)");
+
 	pfd[0].fd = fd;
 	pfd[0].events = POLLIN;
+
+	memset(&ins, 0, sizeof(struct input_state));
+	ins.fd = fd;
 
 	if (timespecisset(&interval)) {
 		timeout = interval;
@@ -322,8 +393,16 @@ proceed_file(FILE *f, long long *lineno) {
 			timespecadd(&now, &interval, &next);
 
 		if (nready) {
-			if ((pfd[0].revents & POLLIN) == POLLIN)
-				proceed_input(f, lineno);
+			if ((pfd[0].revents & POLLIN) == POLLIN) {
+				switch (proceed_input(&ins, lineno)) {
+				case -1:
+					warn("proceed_input");
+					goto finish;
+
+				case 0:
+					goto finish;
+				}
+			}
 			if ((pfd[0].revents & POLLHUP) == POLLHUP)
 				break;
 			if ((pfd[0].revents & POLLERR) == POLLERR)
@@ -332,6 +411,9 @@ proceed_file(FILE *f, long long *lineno) {
 		if (timespecisset(&interval))
 			proceed_queued();
 	}
+
+finish:
+	free(ins.buf);
 }
 
 int
@@ -404,7 +486,7 @@ main(int argc, char *argv[]) {
 	display_line(out_str, out_str_len);
 	clock_gettime(CLOCK_MONOTONIC, &now);
 
-	proceed_file(stdin, &lineno);
+	proceed_file(STDIN_FILENO, &lineno);
 
 	if (queued_str)
 		display_line(queued_str, queued_len);
