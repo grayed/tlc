@@ -29,9 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifndef __dead
-#define __dead
-#endif
+#include "compat.h"
 
 // user-defined parameters
 bool		 debug, use_format, passthrough;
