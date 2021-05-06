@@ -42,6 +42,7 @@ else
 	git push origin "$tag"
 fi
 
+make clean clean-test
 pax -wzv \
 	-s ',^\./.git.*,,' \
 	-s ',^\./obj\(/.*\)*$,,' \

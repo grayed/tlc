@@ -2,13 +2,17 @@
 PROG =	tlc
 COPTS =	-Wall
 
-.PHONY: test
-test:
-	cd ${.CURDIR}/tests && ${.MAKE}
+.include <bsd.prog.mk>
 
 all: README.md
+
 README.md: tlc.1
 	mandoc -Tmarkdown tlc.1 >$@
 	sed -i '$$ d' $@
 
-.include <bsd.prog.mk>
+.PHONY: test clean-test
+test:
+	cd ${.CURDIR}/tests && ${.MAKE}
+
+clean-test:
+	cd ${.CURDIR}/tests && ${.MAKE} clean
