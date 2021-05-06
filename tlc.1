@@ -106,11 +106,18 @@ $ rm -Rv foo | tlc 'files removed'
 and eventually the line above will evolve into:
 .Bd -literal -offset indent
 1764 files removed.
+$
 .Ed
 .Pp
-Same with more details and logging to the file:
+Monitor files as being pushed on pipe:
 .Bd -literal -offset indent
-$ rm -Rv foo | tlc -fp '%i files removed, last: %s' >rm.log
+$ find /usr/lib -type f -name '*.so' |
+  tlc -pf '%i file found: %s' |
+  xargs -J % objdump -p % >plugins.log
+37 file found: /usr/lib/kid3/libkid3-core.so
+<...>
+1337 file found: /usr/lib/libkdeinit5_kile.so
+$
 .Ed
 .Sh SEE ALSO
 .Xr getline 3
