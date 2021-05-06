@@ -1,0 +1,23 @@
+name: latest MacOS-based build
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+    
+    steps:
+    - name: checkout
+      uses: actions/checkout@v1
+
+    - name: create build directory
+      run: mkdir build
+
+    - name: configure
+      run: cmake -DCMAKE_BUILD_TYPE=Debug ..
+      working-directory: build
+
+    - name: build
+      run: make VERBOSE=1
+      working-directory: build
