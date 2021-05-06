@@ -10,8 +10,11 @@ TESTS !=	(cd ${.CURDIR}; ls -1 *.expected) | sed 's/\.expected$$//'
 CMDS_01 =	sleep 1; echo foo; sleep 2; echo bar; sleep 1
 ARGS_01 =	-i 2 files
 
-CMDS_02 =	jot -w 'line number ' 1000
-ARGS_02 =	-fp '[%i] %%%% got %s'
+CMDS_02 =	for b in `jot 99`; do \
+			{ jot -s n $$b; echo -n _; } | \
+			awk -v RS=_ -v ORS=_ '{system("sleep 0.1"); print}'; \
+		done
+ARGS_02 =	-fpi 100 '[%i] %%%% got %s'
 EXPECTEDOUT_02 =	${.OBJDIR}/02.expectedout
 EXTRA_02 =	${EXPECTEDOUT_02}
 02: ${EXPECTEDOUT_02}
