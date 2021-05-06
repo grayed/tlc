@@ -1,9 +1,12 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.7)
 
 project(tlc LANGUAGES C)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+add_compile_options(-Wall)
+# notsupp in 3.7 string(PREPEND CMAKE_C_FLAGS_DEBUG "-O0 ")
+set(CMAKE_C_FLAGS_DEBUG "-O0 ${CMAKE_C_FLAGS_DEBUG}")
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	add_definitions(-DDEBUG)
 endif()
