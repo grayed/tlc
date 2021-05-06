@@ -1,0 +1,21 @@
+name: latest Ubuntu-based build
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: install dependencies
+      run: sudo apt-get install libbsd-dev
+    - name: create build directory
+      run: mkdir build
+    - name: configure
+      run: cmake -DCMAKE_BUILD_TYPE=Debug ..
+      working-directory: build
+    - name: make
+      run: make VERBOSE=1
+      working-directory: build
