@@ -30,8 +30,6 @@ ARGS_04 =	-e 100 'number lines'
 CMDS_05 =	jot 1000
 ARGS_05 =	-fe 100 '[%p%] lines'
 
-.PHONY:	gen
-
 .for _t in ${TESTS}
 ARGS_${_t} ?=
 EXPECTED_${_t} ?=	${.CURDIR}/${_t}.expected
