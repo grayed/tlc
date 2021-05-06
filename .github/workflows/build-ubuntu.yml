@@ -8,14 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v1
+    - name: checkout
+      uses: actions/checkout@v1
+
     - name: install dependencies
       run: sudo apt-get install libbsd-dev
+
     - name: create build directory
       run: mkdir build
+
     - name: configure
       run: cmake -DCMAKE_BUILD_TYPE=Debug ..
       working-directory: build
-    - name: make
+
+    - name: build
       run: make VERBOSE=1
       working-directory: build
