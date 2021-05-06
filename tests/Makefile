@@ -15,11 +15,7 @@ CMDS_02 =	for b in `jot 99`; do \
 			awk -v RS=_ -v ORS=_ '{system("sleep 0.1"); print}'; \
 		done
 ARGS_02 =	-fpi 100 '[%i] %%%% got %s'
-EXPECTEDOUT_02 =	${.OBJDIR}/02.expectedout
-EXTRA_02 =	${EXPECTEDOUT_02}
-02: ${EXPECTEDOUT_02}
-${EXPECTEDOUT_02}:
-	${CMDS_02} >$@
+CHECK_STDOUT_02 =	yes
 
 CMDS_03 =	jot 10
 ARGS_03 =	-i 0
@@ -33,22 +29,39 @@ ARGS_05 =	-fe 100 '[%p%] lines'
 .for _t in ${TESTS}
 ARGS_${_t} ?=
 EXPECTED_${_t} ?=	${.CURDIR}/${_t}.expected
-EXPECTEDOUT_${_t} ?=	/dev/null
+CHECK_STDOUT_${_t} ?=	no
 EXTRA_${_t} ?=
+
 STDOUT_${_t} =		${.OBJDIR}/${_t}.stdout
 STDERR_${_t} =		${.OBJDIR}/${_t}.stderr
+CLEAN_${_t} =		${STDOUT_${_t}} ${STDERR_${_t}}
 
-.PHONY: ${_t} clean-${_t}
+.PHONY: ${_t} clean-${_t} run-tlc-${_t}
 
-${_t}:
-	rm -f ${STDOUT_${_t}} ${STDERR_${_t}}
+.if ${CHECK_STDOUT_${_t}:L} == "yes"
+EXPECTEDOUT_${_t} ?=	${.OBJDIR}/${_t}.expectedout
+CLEAN_${_t} +=		${EXPECTEDOUT_${_t}}
+${_t}: ${EXPECTEDOUT_${_t}}
+${EXPECTEDOUT_${_t}}: Makefile
+	${CMDS_${_t}} >$@
+.else
+EXPECTEDOUT_${_t} ?=	/dev/null
+.endif
+
+${_t}: ${STDOUT_${_t}} ${STDERR_${_t}}
+	@stdout_okay=true; stderr_okay=true; \
+	 diff -u ${EXPECTED_${_t}} ${STDERR_${_t}} || stdout_okay=false; \
+	 diff -u ${EXPECTEDOUT_${_t}} ${STDOUT_${_t}} || stderr_okay=false; \
+	 $$stdout_okay && $$stderr_okay
+
+${STDOUT_${_t}} ${STDERR_${_t}}: run-tlc-${_t}
+
+run-tlc-${_t}:
 	(${CMDS_${_t}}) | ${TLC} ${ARGS_${_t}} >${STDOUT_${_t}} 2>${STDERR_${_t}}
-	diff -u ${EXPECTED_${_t}} ${STDERR_${_t}}
-	diff -u ${EXPECTEDOUT_${_t}} ${STDOUT_${_t}}
 
 clean: clean-${_t}
 clean-${_t}:
-	rm -f ${STDOUT_${_t}} ${STDERR_${_t}} ${EXTRA_${_t}}
+	rm -f ${CLEAN_${_t}}
 .endfor
 
 REGRESS_TARGETS ?=	${TESTS}
