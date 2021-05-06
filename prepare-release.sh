@@ -48,6 +48,7 @@ pax -wzv \
 	-s ',^\./obj\(/.*\)*$,,' \
 	-s ',^\./build.*,,' \
 	-s ",^./${0##*/}\$,," \
+	-s ',^.*db.conf,,' \
 	-s "/^./tlc-${v}/" \
 	. >"$arc_path/$arc_name"
 echo "archive saved to $arc_path/$arc_name"
