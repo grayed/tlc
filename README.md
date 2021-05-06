@@ -5,7 +5,7 @@ It allows you to view some command's progress without filling whole
 screen by extraneous details.
 
 Written in C using modern POSIX and OpenBSD features.
-Build testing happens on OpenBSD, Linux and MacOS for now.
+Build testing happens on OpenBSD, Linux, MacOS and FreeBSD for now.
 Portability patches are welcome.
 
 The code is distributed under BSD 2-clause license, except a few
