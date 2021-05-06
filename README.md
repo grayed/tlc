@@ -1,98 +1,106 @@
-TLC(1) - General Commands Manual
+# TLC
 
-# NAME
+**tlc** (Terminal Line Count) utility counts lines interactively on terminal.
+It allows you to view some command's progress without filling whole
+screen by extraneous details.
 
-**tlc** - count input line interactively
+Written in C using modern POSIX and OpenBSD features.
+Build testing happens on OpenBSD and Linux for now.
+Portability patches are welcome.
 
-# SYNOPSIS
+The code is distributed under BSD 2-clause license, except a few
+compatibility goo that uses older BSD 3-clause license.
 
-**tlc**
-\[**-fp**]
-\[**-i**&nbsp;*interval*]
-\[**-s**&nbsp;*start*]
-\[*text*]
+## Build and install instructions
 
-# DESCRIPTION
+### Build and install on OpenBSD
 
-The
-**tlc**
-utility reads lines from standard input and, by default,
-regularly updates summary line with increasing count of lines read
-on standard error descriptor.
+The shortest way:
 
-If
-*text*
-is specified, it is appended to summary line.
+	make && doas make install
 
-The options are as follows:
+You can also run regression tests after successful build:
 
-**-f**
+	make test
 
-> Makes
-> *text*
-> interpreted as format string to be used for displaing summary.
-> The following format codes are supported:
+### Build and install on non-OpenBSD
 
-> %%
+Non-BSD systems require [https://libbsd.freedesktop.org/wiki/](libbsd)
+being installed. Note that if you system has separate -dev packages,
+you'll need such one as well for building `tlc` not just libbsd itself.
 
-> > Encodes single percent sign.
+Use CMake the usual way, for example:
 
-> %i
+	mkdir -p build
+	cd build
+	cmake ..
+	make
 
-> > Replaced with number of lines read.
+To install you'll likely need elevate priviledges via sudo(8):
 
-> %s
+	sudo make install
 
-> > Replaced with last line read; empty if no lines were read yet.
-
-> Every other combination of percent sign and some character will
-> result in outputting them literally.
-
-**-i** *interval*
-
-> Sets minimal number of seconds between summary line updates to
-> *interval*.
-> This helps to avoid flickering due too often screen updates.
-> If set to zero, screen will be updated upon each input line read.
-> Default value is 1 second.
-
-**-p**
-
-> Enables passthrough mode: every input line gets duplicated on
-> standard output.
-
-**-s** *start*
-
-> Sets initial value of lines read to
-> *start*.
-> Defaults to 0.
-
-# EXIT STATUS
-
-The **tlc** utility exits&#160;0 on success, and&#160;&gt;0 if an error occurs.
-
-# EXAMPLES
+## Usage examples
 
 Show file removal progress:
 
-	$ rm -Rv foo | tlc 'files removed'
-	42 files removed...
+	$ rm -Rv foo | tlc
+	42...
 
 and eventually the line above will evolve into:
 
-	1764 files removed.
+	1765
+	$
 
-Same with more details and logging to the file:
+If you want to make things look prettier:
 
-	$ rm -Rv foo | tlc -fp '%i files removed, last: %s' >rm.log
+	$ rm -Rv foo | tlc 'files removed'
+	42 files removed...
+	<...>
+	1765 files removed.
+	$
 
-# SEE ALSO
+If you now how many lines there should be, you can even print progress:
 
-getline(3)
+	$ rm -Rv foo | tlc -e 1000
+	176%
+	$
 
-# AUTHORS
+As you can see, 100% is not the real limit. :-)
 
-**tlc**
-was written by
-Vadim Zhukov &lt;[zhuk@openbsd.org](mailto:zhuk@openbsd.org)&gt;.
+You can customize the status line:
 
+	$ rm -Rv foo | tlc -e 1000 -f '[%p%] %i files removed, last one: %s'
+	[37%] 370 files removed, last one: foo/bar/buz
+	<...>
+	[176%] 1765 files removed, last one: foo
+	$
+
+Now a bit more complex task: lets monitor progress of the following pipe:
+
+	find /usr/lib -type f -name '*.so' |
+	xargs -J % objdump -p % >plugins.log
+
+We can use `tee` or `tail -f` magic filling our screen:
+
+	find /usr/local/lib -type f -name '*.so' |
+	tee /dev/stderr |
+	xargs -J % objdump -p % >plugins.log
+
+This will help you to see the process is going on, but it won't be easy
+to see how many files were already handled.  Lets use `tlc` instead:
+
+	$ find /usr/lib -type f -name '*.so' |
+	tlc -p |
+	xargs -J % objdump -p % >plugins.log
+
+This (shorter!) command will display just status line like:
+
+	37...
+
+until the end:
+
+	1337
+	$
+
+For more details see the manual page, `tlc(1)`.
