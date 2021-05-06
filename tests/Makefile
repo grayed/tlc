@@ -33,7 +33,7 @@ ARGS_05 =	-fe 100 '[%p%] lines'
 .for _t in ${TESTS}
 ARGS_${_t} ?=
 EXPECTED_${_t} ?=	${.CURDIR}/${_t}.expected
-EXPECTEDOUT_${_t} ?=
+EXPECTEDOUT_${_t} ?=	/dev/null
 EXTRA_${_t} ?=
 STDOUT_${_t} =		${.OBJDIR}/${_t}.stdout
 STDERR_${_t} =		${.OBJDIR}/${_t}.stderr
@@ -44,11 +44,7 @@ ${_t}:
 	rm -f ${STDOUT_${_t}} ${STDERR_${_t}}
 	(${CMDS_${_t}}) | ${TLC} ${ARGS_${_t}} >${STDOUT_${_t}} 2>${STDERR_${_t}}
 	diff -u ${EXPECTED_${_t}} ${STDERR_${_t}}
-.if empty(EXPECTEDOUT_${_t})
-	diff -u /dev/null ${STDOUT_${_t}}
-.else
 	diff -u ${EXPECTEDOUT_${_t}} ${STDOUT_${_t}}
-.endif
 
 clean: clean-${_t}
 clean-${_t}:
