@@ -350,7 +350,7 @@ proceed_file(int fd, long long *lineno) {
 	struct pollfd		pfd[1];
 	struct timespec		timeout, *pt, next;
 	struct input_state	ins;
-	int			flags, nready;
+	int			flags, nready, poll_timeout;
 
 	if ((flags = fcntl(fd, F_GETFL)) == -1)
 		err(1, "fcntl(F_GETFL)");
@@ -380,7 +380,10 @@ proceed_file(int fd, long long *lineno) {
 				timespecclear(pt);
 		}
 
-		nready = ppoll(pfd, 1, pt, NULL);
+		// ppoll(2) is not supported on MacOS
+		poll_timeout = pt ?
+		    (int)(pt->tv_sec * 1000 + pt->tv_nsec / 1000000) : -1;
+		nready = poll(pfd, 1, poll_timeout);
 		if (nready == -1) {
 			if (errno == EINTR)
 				continue;
@@ -440,7 +443,7 @@ main(int argc, char *argv[]) {
 			break;
 		case 'i':
 			ul = strtoul(optarg, &ep, 10);
-			if (ul > INT_MAX)
+			if (ul > INT_MAX / 1000 - 1)	// used in poll(2)
 				usage("interval is too large");
 			if (*ep || ep == optarg)
 				usage("invalid interval");
