@@ -221,6 +221,14 @@ proceed_input(FILE *f, long long *lineno) {
 	char	*line = NULL, *out_str;
 
 	while ((linelen = getline(&line, &linesize, f)) != (size_t)-1) {
+		// fix non-blocking problems on non-OpenBSD (e.g., Linux)
+		if (ferror(f) && errno == EAGAIN) {
+			while (linelen--)
+				if (ungetc(line[linelen], f) == EOF)
+					err(1, "ungetc");
+			break;
+		}
+
 		(*lineno)++;
 
 		if (passthrough)
@@ -240,6 +248,11 @@ proceed_input(FILE *f, long long *lineno) {
 				free(out_str);
 		}
 	}
+
+	// fix non-blocking problems on non-OpenBSD (e.g., Linux)
+	if (ferror(f) && errno == EAGAIN)
+		clearerr(f);
+
 	free(line);
 }
 
