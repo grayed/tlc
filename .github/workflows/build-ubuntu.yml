@@ -36,6 +36,6 @@ jobs:
         name: ubuntu-test-report
         path: |
           build/Testing/Temporary/LastTest.log
-          build/*.expectedout
-          build/*.stdout
-          build/*.stderr
+          build/**/*.expectedout
+          build/**/*.stdout
+          build/**/*.stderr
