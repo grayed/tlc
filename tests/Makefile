@@ -8,11 +8,11 @@ TLC =		${.CURDIR}/../tlc
 TESTS !=	(cd ${.CURDIR}; ls -1 *.expected) | sed 's/\.expected$$//'
 
 ARGS_01 =	-i 2 files
-ARGS_02 =	-fpi 100 '[%i] %%%% got %s'
+ARGS_02 =	-fpi 100 "[%i] %%%% got %s"
 ARGS_03 =	-i 0
-ARGS_04 =	-e 100 'number lines'
-ARGS_05 =	-fe 100 '[%p%] lines'
-ARGS_06 =	-d '' -p
+ARGS_04 =	-e 100 "number lines"
+ARGS_05 =	-fe 100 "[%p%] lines"
+ARGS_06 =	-d "" -p
 
 TESTS_CHECKING_STDOUT =	02 06
 
@@ -44,7 +44,7 @@ EXPECTEDOUT_${_t} ?=	/dev/null
 CMakeLists.txt: gen-cmake-test-${_t}
 gen-cmake-test-${_t}: .USE
 	sh ${.CURDIR}/gen-cmake-test ${_t} ${CHECK_STDOUT_${_t}} \
-	   "${ARGS_${_t}}" >>$@
+	   "${ARGS_${_t}:QL}" >>$@
 
 ${_t}: ${STDOUT_${_t}} ${STDERR_${_t}}
 ${STDOUT_${_t}} ${STDERR_${_t}}: run-test-${_t}

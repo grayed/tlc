@@ -37,5 +37,6 @@ EOF
 fi
 
 cat <<EOF
+                  VERBATIM
                  )
 EOF
