@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+# This script should be run from tests directory in build tree.
+#
+
+set -e
+set -u
+
+name=$1
+check_stdout=$2
+shift 2
+
+source_dir=${0%/*}
+test x"$source_dir" != x"$0" || source_dir=$PWD
+
+cmds=$source_dir/$name.cmds
+stdout=$name.stdout
+stderr=$name.stderr
+expected_stderr=$source_dir/$name.expected
+check_stdout=$(echo $check_stdout | tr A-Z a-z)
+
+case $check_stdout in
+y|ye|yes)
+	expected_stdout=$name.expectedout
+	;;
+n|no)
+	expected_stdout=/dev/null
+	;;
+*)
+	echo invalid check_stdout value: "$check_stdout" >&2
+	false
+	;;
+esac
+
+sh "$cmds" | "$@" >$stdout 2>$stderr || { cat "$stderr" >&2; false; }
+
+stderr_okay=true
+diff -u -- "$expected_stderr" "$stderr" || stderr_okay=false
+
+stdout_okay=true
+diff -u -- "$expected_stdout" "$stdout" || stdout_okay=false
+
+$stdout_okay && $stderr_okay

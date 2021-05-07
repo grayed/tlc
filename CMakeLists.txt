@@ -4,6 +4,8 @@ project(tlc LANGUAGES C)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+include(CTest)
+
 add_compile_options(-Wall)
 # notsupp in 3.7 string(PREPEND CMAKE_C_FLAGS_DEBUG "-O0 ")
 set(CMAKE_C_FLAGS_DEBUG "-O0 ${CMAKE_C_FLAGS_DEBUG}")
@@ -25,3 +27,7 @@ else()
 endif()
 
 install(TARGETS tlc RUNTIME DESTINATION bin)
+
+if (BUILD_TESTING)
+	add_subdirectory(tests)
+endif()

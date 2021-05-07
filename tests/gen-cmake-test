@@ -1,0 +1,28 @@
+#!/bin/sh
+
+set -e
+set -u
+
+name=$1
+check_stdout=$2
+args=$3
+
+check_stdout=$(echo "$check_stdout" | tr A-Z a-z)
+if [ x"$check_stdout" = xyes ]; then
+	cat <<EOF
+
+add_custom_command(OUTPUT $name.expectedout
+                   COMMAND sh -c "sh \${CMAKE_CURRENT_SOURCE_DIR}/$name.cmds >$name.expectedout"
+                   DEPENDS $name.cmds
+                   COMMENT "sh $name.cmds >$name.expectedout"
+                   VERBATIM
+                  )
+EOF
+fi
+
+cat <<EOF
+
+add_test(NAME test-$name
+         COMMAND sh -c "sh \${CMAKE_CURRENT_SOURCE_DIR}/run-test $name $check_stdout \$<TARGET_FILE:tlc> $args"
+        )
+EOF
