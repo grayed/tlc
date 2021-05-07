@@ -40,7 +40,7 @@ struct input_state {
 };
 
 // user-defined parameters
-bool		 debug, has_end_value, use_format, passthrough;
+bool		 has_end_value, use_format, passthrough;
 struct timespec	 interval = { 1, 0 };
 char		*fmts;
 long long	 start_value, end_value;
@@ -102,18 +102,8 @@ display_line(char *line, size_t len) {
 	write(STDERR_FILENO, backspaces, last_out_len);
 	write(STDERR_FILENO, blanks, last_out_len);
 	write(STDERR_FILENO, backspaces, last_out_len);
-	if (len) {
-		if (debug) {
-			printf("[% 7lld.%09lld] %s: writing '%s' (old one was %zu length)\n",
-			    (long long)now.tv_sec, (long long)now.tv_nsec,
-			    __func__, line, last_out_len);
-		}
+	if (len)
 		write(STDERR_FILENO, line, len);
-	} else if (debug) {
-		printf("[% 7lld.%09lld] %s: asked to write empty line (old one was %zu length)\n",
-		    (long long)now.tv_sec, (long long)now.tv_nsec,
-		    __func__, last_out_len);
-	}
 	last_out_len = len;
 	last_out_str = line;
 }
@@ -427,11 +417,8 @@ main(int argc, char *argv[]) {
 	int		 ch;
 	char		*ep, *out_str;
 
-	while ((ch = getopt(argc, argv, /*"d"*/ "e:fi:ps:")) != -1) {
+	while ((ch = getopt(argc, argv, "e:fi:ps:")) != -1) {
 		switch(ch) {
-		case 'd':
-			debug = true;
-			break;
 		case 'e':
 			has_end_value = true;
 			end_value = strtoll(optarg, &ep, 10);
