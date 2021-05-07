@@ -12,10 +12,9 @@ if [ x"$check_stdout" = xyes ]; then
 	cat <<EOF
 
 add_custom_command(OUTPUT $name.expectedout
-                   COMMAND sh -c "sh \${CMAKE_CURRENT_SOURCE_DIR}/$name.cmds >$name.expectedout"
+                   COMMAND sh \${CMAKE_CURRENT_SOURCE_DIR}/$name.cmds ">$name.expectedout"
                    DEPENDS $name.cmds
                    COMMENT "sh $name.cmds >$name.expectedout"
-                   VERBATIM
                   )
 EOF
 fi
