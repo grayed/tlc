@@ -1,5 +1,6 @@
 add_custom_target(prepare-expected-stdout ALL DEPENDS
                   02.expectedout
+                  06.expectedout
                   COMMENT "generating expected stdout files"
                  )
 
@@ -28,4 +29,15 @@ add_test(NAME test-04
 
 add_test(NAME test-05
          COMMAND sh -c "sh ${CMAKE_CURRENT_SOURCE_DIR}/run-test 05 no $<TARGET_FILE:tlc> -fe\ 100\ \'\[%p%\]\ lines\'"
+        )
+
+add_custom_command(OUTPUT 06.expectedout
+                   COMMAND sh -c "sh ${CMAKE_CURRENT_SOURCE_DIR}/06.cmds >06.expectedout"
+                   DEPENDS 06.cmds
+                   COMMENT "sh 06.cmds >06.expectedout"
+                   VERBATIM
+                  )
+
+add_test(NAME test-06
+         COMMAND sh -c "sh ${CMAKE_CURRENT_SOURCE_DIR}/run-test 06 yes $<TARGET_FILE:tlc> -d\ \'\'\ -p"
         )

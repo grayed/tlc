@@ -12,8 +12,9 @@ ARGS_02 =	-fpi 100 '[%i] %%%% got %s'
 ARGS_03 =	-i 0
 ARGS_04 =	-e 100 'number lines'
 ARGS_05 =	-fe 100 '[%p%] lines'
+ARGS_06 =	-d '' -p
 
-TESTS_CHECKING_STDOUT =	02
+TESTS_CHECKING_STDOUT =	02 06
 
 .for _t in ${TESTS}
 ARGS_${_t} ?=

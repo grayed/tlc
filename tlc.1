@@ -24,6 +24,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl fp
+.Op Fl d Ar delim
 .Op Fl e Ar end
 .Op Fl i Ar interval
 .Op Fl s Ar start
@@ -41,6 +42,14 @@ is specified, it is appended to summary line.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl d Ar delim
+Changes delimiter used to split input lines to
+.Ar delim .
+Can be any string; the empty
+.Ar delim
+is interpreted as
+.Ql \\\\0 .
+Default is newline character.
 .It Fl e Ar end
 Display progress in terms of percents instead of line numbers.
 The 100% mark will be achivied upon reading

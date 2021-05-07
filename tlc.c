@@ -39,10 +39,13 @@ struct input_state {
 	size_t	 handled;	// number of bytes already handled
 };
 
+char	 	def_delimiter = '\n';
+
 // user-defined parameters
 bool		 has_end_value, use_format, passthrough;
 struct timespec	 interval = { 1, 0 };
-char		*fmts;
+char		*fmts, *delimiter = (char *)&def_delimiter;
+size_t		 delimiter_sz = 1;
 long long	 start_value, end_value;
 
 struct timespec	 now;
@@ -69,7 +72,7 @@ usage(const char *errmsg) {
 	if (errmsg)
 		dprintf(STDERR_FILENO, "%s\n", errmsg);
 	dprintf(STDERR_FILENO,
-	    "usage: %s [-fp] [-e end] [-i interval] [-s start] [text]\n",
+	    "usage: %s [-fp] [-d delim] [-e end] [-i interval] [-s start] [text]\n",
 	    getprogname());
 	exit(1);
 }
@@ -255,7 +258,8 @@ proceed_input(struct input_state *ins, long long *lineno) {
  */
 
 	for (;;) {
-		p = memchr(ins->buf + ins->handled, '\n', ins->available - ins->handled);
+		p = memmem(ins->buf + ins->handled, ins->available - ins->handled,
+		    delimiter, delimiter_sz);
 		if (p == NULL) {
 			// try to read more data from fd
 			ssize_t	 nread;
@@ -300,11 +304,11 @@ proceed_input(struct input_state *ins, long long *lineno) {
 			} else {
 				p = memchr(ins->buf + ins->available, '\n', (size_t)nread);
 				if (p)
-					p++;	// include trailing '\n';
+					p += delimiter_sz;
 				ins->available += (size_t)nread;
 			}
 		} else
-			p++;	// include trailing '\n';
+			p += delimiter_sz;
 
 		if (p == NULL)
 			return 1;
@@ -319,8 +323,8 @@ proceed_input(struct input_state *ins, long long *lineno) {
 		if (passthrough)
 			fwrite(line, 1, linelen, stdout);	// check for error?
 
-		if (line[linelen - 1] == '\n')
-			line[--linelen] = '\0';
+		if (memcmp(line+linelen-delimiter_sz, delimiter, delimiter_sz) == 0)
+			line[linelen -= delimiter_sz] = '\0';
 
 		if ((out_str = format_line(&out_str_len, *lineno, line, linelen)) == NULL)
 			return -1;
@@ -417,8 +421,22 @@ main(int argc, char *argv[]) {
 	int		 ch;
 	char		*ep, *out_str;
 
-	while ((ch = getopt(argc, argv, "e:fi:ps:")) != -1) {
+	// do not define 'c', 'l', 'm' and 'w', unless they mean same as in wc(1)
+	while ((ch = getopt(argc, argv, "d:e:fi:ps:")) != -1) {
 		switch(ch) {
+		case 'd':
+			if (delimiter && delimiter != &def_delimiter)
+				free(delimiter);
+			if (optarg[0] == '\0') {
+				def_delimiter = '\0';
+				delimiter = &def_delimiter;
+				delimiter_sz = 1;
+			} else {
+				if ((delimiter = strdup(optarg)) == NULL)
+					err(1, "strdup");
+				delimiter_sz = strlen(delimiter);
+			}
+			break;
 		case 'e':
 			has_end_value = true;
 			end_value = strtoll(optarg, &ep, 10);
@@ -494,6 +512,8 @@ main(int argc, char *argv[]) {
 	free(backspaces);
 	if (!use_format && argc)
 		free(fmts);
+	if (delimiter != &def_delimiter)
+		free(delimiter);
 
 	return 0;
 }

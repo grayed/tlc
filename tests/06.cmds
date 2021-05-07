@@ -1,0 +1,8 @@
+delim=
+jot -n 99 1 10000000 |
+sort -R --random-source=$0 |
+while read -r line; do
+	printf "${line}\\0"
+	delim=delim
+done
+echo -n end
