@@ -27,6 +27,7 @@ jobs:
       working-directory: build
 
     - name: save test report
+      if:   failure()
       uses: actions/upload-artifact@v2
       with:
         name: macos-test-report
