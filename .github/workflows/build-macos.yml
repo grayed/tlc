@@ -25,3 +25,9 @@ jobs:
     - name: run tests
       run: make VERBOSE=1 test
       working-directory: build
+
+    - name: save test report
+      uses: actions/upload-artifacts@v2
+      with:
+        name: macos-test-report
+        path: build/Testing/Temporary/LastTest.log

@@ -9,7 +9,7 @@ jobs:
     
     steps:
     - name: checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     - name: install dependencies
       run: sudo apt-get install libbsd-dev
@@ -28,3 +28,9 @@ jobs:
     - name: run tests
       run: make VERBOSE=1 test
       working-directory: build
+
+    - name: save test report
+      uses: actions/upload-artifacts@v2
+      with:
+        name: ubuntu-test-report
+        path: build/Testing/Temporary/LastTest.log
