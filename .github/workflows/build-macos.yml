@@ -14,24 +14,20 @@ jobs:
     - name: create build directory
       run: mkdir build
 
-    - name: configure
-      run: cmake -DCMAKE_BUILD_TYPE=Debug ..
-      working-directory: build
-
     - name: build
-      run: make VERBOSE=1
       working-directory: build
+      run: |
+        cmake --trace-redirect=CMakeTrace.log -DCMAKE_BUILD_TYPE=Debug ..
+        make VERBOSE=1
+        make VERBOSE=1 test
 
-    - name: run tests
-      run: make VERBOSE=1 test
-      working-directory: build
-
-    - name: save failed test report
+    - name: save failures report
       if:   failure()
       uses: actions/upload-artifact@v2
       with:
-        name: macos-test-report
+        name: macos-error-report
         path: |
+          build/**/*.log
           build/Testing/Temporary/LastTest.log
           build/**/*.expectedout
           build/**/*.stdout
