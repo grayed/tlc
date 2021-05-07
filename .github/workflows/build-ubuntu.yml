@@ -12,7 +12,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: install dependencies
-      run: sudo apt-get install libbsd-dev
+      run: sudo apt-get install libbsd-dev athena-jot
 
     - name: create build directory
       run: mkdir build
