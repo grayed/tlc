@@ -33,7 +33,7 @@ CHECK_STDOUT_${_t} =	yes
 EXPECTEDOUT_${_t} ?=	${_t}.expectedout
 CLEAN_${_t} +=		${EXPECTEDOUT_${_t}}
 ${_t}: ${EXPECTEDOUT_${_t}}
-${EXPECTEDOUT_${_t}}: Makefile
+${EXPECTEDOUT_${_t}}: Makefile ${CMDS_${_t}}
 	sh ${CMDS_${_t}} >$@
 .else
 CHECK_STDOUT_${_t} =	no
