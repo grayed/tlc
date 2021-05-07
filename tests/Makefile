@@ -44,7 +44,7 @@ EXPECTEDOUT_${_t} ?=	/dev/null
 CMakeLists.txt: gen-cmake-test-${_t}
 gen-cmake-test-${_t}: .USE
 	sh ${.CURDIR}/gen-cmake-test ${_t} ${CHECK_STDOUT_${_t}} \
-	   "${ARGS_${_t}:Q}" >>$@
+	   "${ARGS_${_t}}" >>$@
 
 ${_t}: ${STDOUT_${_t}} ${STDERR_${_t}}
 ${STDOUT_${_t}} ${STDERR_${_t}}: run-test-${_t}
