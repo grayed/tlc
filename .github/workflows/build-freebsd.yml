@@ -23,9 +23,13 @@ jobs:
           make VERBOSE=1
           make VERBOSE=1 test
 
-    - name: save test report
+    - name: save failed test report
       if:   failure()
       uses: actions/upload-artifact@v2
       with:
         name: freebsd-test-report
-        path: build/Testing/Temporary/LastTest.log
+        path: |
+          build/Testing/Temporary/LastTest.log
+          build/*.expectedout
+          build/*.stdout
+          build/*.stderr

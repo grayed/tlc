@@ -29,9 +29,13 @@ jobs:
       run: make VERBOSE=1 test
       working-directory: build
 
-    - name: save test report
+    - name: save failed test report
       if:   failure()
       uses: actions/upload-artifact@v2
       with:
         name: ubuntu-test-report
-        path: build/Testing/Temporary/LastTest.log
+        path: |
+          build/Testing/Temporary/LastTest.log
+          build/*.expectedout
+          build/*.stdout
+          build/*.stderr
