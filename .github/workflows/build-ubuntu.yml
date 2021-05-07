@@ -30,7 +30,7 @@ jobs:
       working-directory: build
 
     - name: save test report
-      uses: actions/upload-artifacts@v2
+      uses: actions/upload-artifact@v2
       with:
         name: ubuntu-test-report
         path: build/Testing/Temporary/LastTest.log
