@@ -22,6 +22,20 @@ fi
 cat <<EOF
 
 add_test(NAME test-$name
-         COMMAND sh -c "sh \${CMAKE_CURRENT_SOURCE_DIR}/run-test $name $check_stdout \$<TARGET_FILE:tlc> $args"
+         COMMAND sh \${CMAKE_CURRENT_SOURCE_DIR}/run-test $name $check_stdout \$<TARGET_FILE:tlc> $args
         )
+
+add_custom_target(test-$name
+                  sh \${CMAKE_CURRENT_SOURCE_DIR}/run-test $name $check_stdout \$<TARGET_FILE:tlc> $args
+                  COMMENT "Running test $name"
+EOF
+
+if [ x"$check_stdout" = xyes ]; then
+cat <<EOF
+                  DEPENDS $name.expectedout
+EOF
+fi
+
+cat <<EOF
+                 )
 EOF
