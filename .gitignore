@@ -15,4 +15,4 @@ tlc
 # Tests junk
 *.stdout
 *.stderr
-02.expectedout
+*.expectedout
