@@ -29,5 +29,7 @@ endif()
 install(TARGETS tlc RUNTIME DESTINATION bin)
 
 if (BUILD_TESTING)
+	message(NOTICE "-- Tests are enabled, looking for additional dependencies")
+	find_program(JOT_EXECUTABLE jot REQUIRED)
 	add_subdirectory(tests)
 endif()
