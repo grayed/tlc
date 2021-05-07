@@ -21,3 +21,7 @@ jobs:
     - name: build
       run: make VERBOSE=1
       working-directory: build
+
+    - name: run tests
+      run: make VERBOSE=1 test
+      working-directory: build
