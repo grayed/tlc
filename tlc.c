@@ -379,7 +379,7 @@ proceed_file(int fd, long long *lineno) {
 				timespecclear(pt);
 		}
 
-		// ppoll(2) is not supported on MacOS
+		// ppoll(2) is not supported on macOS
 		poll_timeout = pt ?
 		    (int)(pt->tv_sec * 1000 + pt->tv_nsec / 1000000) : -1;
 		nready = poll(pfd, 1, poll_timeout);
