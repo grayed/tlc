@@ -1,6 +1,7 @@
+# XXX the .expected file must be exactly 32 bytes length for FreeBSD's sort
 delim=
 jot -n 99 1 10000000 |
-sort -R --random-source=$0 |
+sort -R --random-source=${0%.cmds}.expected |
 while read -r line; do
 	printf "${line}\\0"
 	delim=delim
