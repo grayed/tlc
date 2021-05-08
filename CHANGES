@@ -1,4 +1,12 @@
 ====================
+v.1.2.0
+====================
+
+* New option '-d delim' allows to change input lines splitting delimiter.
+* Allow running tests in CMake-based builds.
+* Fix a few pipe input issues seen on Linux.
+
+====================
 v.1.1.0
 ====================
 
