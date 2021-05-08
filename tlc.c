@@ -395,20 +395,14 @@ proceed_file(int fd, long long *lineno) {
 			timespecadd(&now, &interval, &next);
 
 		if (nready) {
-			if ((pfd[0].revents & POLLIN) == POLLIN) {
-				switch (proceed_input(&ins, lineno)) {
-				case -1:
-					warn("proceed_input");
-					goto finish;
+			switch (proceed_input(&ins, lineno)) {
+			case -1:
+				warn("proceed_input");
+				goto finish;
 
-				case 0:
-					goto finish;
-				}
+			case 0:
+				goto finish;
 			}
-			if ((pfd[0].revents & POLLHUP) == POLLHUP)
-				break;
-			if ((pfd[0].revents & POLLERR) == POLLERR)
-				break;
 		}
 		if (timespecisset(&interval))
 			proceed_queued();
