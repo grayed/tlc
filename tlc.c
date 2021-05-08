@@ -248,6 +248,7 @@ int
 proceed_input(struct input_state *ins, long long *lineno) {
 	size_t		 linelen, out_str_len;
 	char		*line, *out_str, *p;
+	bool		 has_delimiter;
 
 /*
  * Buffer layout and variable values:
@@ -260,7 +261,11 @@ proceed_input(struct input_state *ins, long long *lineno) {
 	for (;;) {
 		p = memmem(ins->buf + ins->handled, ins->available - ins->handled,
 		    delimiter, delimiter_sz);
-		if (p == NULL) {
+		if (p) {
+			p += delimiter_sz;
+			has_delimiter = true;
+		}
+		while (p == NULL) {
 			// try to read more data from fd
 			ssize_t	 nread;
 
@@ -301,17 +306,17 @@ proceed_input(struct input_state *ins, long long *lineno) {
 					return 0;
 				// last line of input lacks '\n', be precious
 				p = ins->buf + ins->available;
+				has_delimiter = false;
 			} else {
-				p = memchr(ins->buf + ins->available, '\n', (size_t)nread);
-				if (p)
-					p += delimiter_sz;
 				ins->available += (size_t)nread;
+				p = memmem(ins->buf, ins->available,
+				    delimiter, delimiter_sz);
+				if (p) {
+					p += delimiter_sz;
+					has_delimiter = true;
+				}
 			}
-		} else
-			p += delimiter_sz;
-
-		if (p == NULL)
-			return 1;
+		}
 
 		(*lineno)++;
 		line = ins->buf + ins->handled;
@@ -323,7 +328,7 @@ proceed_input(struct input_state *ins, long long *lineno) {
 		if (passthrough)
 			fwrite(line, 1, linelen, stdout);	// check for error?
 
-		if (memcmp(line+linelen-delimiter_sz, delimiter, delimiter_sz) == 0)
+		if (has_delimiter)
 			line[linelen -= delimiter_sz] = '\0';
 
 		if ((out_str = format_line(&out_str_len, *lineno, line, linelen)) == NULL)
