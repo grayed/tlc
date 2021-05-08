@@ -1,4 +1,4 @@
 for b in `jot 99`; do
-	{ jot -s n $b; echo -n _; } |
+	{ jot -s n $b; printf _; } |
 	awk -v RS=_ -v ORS=_ '{system("sleep 0.01"); print}'
 done
