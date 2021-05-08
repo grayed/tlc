@@ -1,4 +1,2 @@
-* Fix tests failing on MacOS.
-* Fix tests failing on Linux.
 * Add NetBSD support.
 * Add Windows support.
