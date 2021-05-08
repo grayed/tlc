@@ -492,6 +492,7 @@ main(int argc, char *argv[]) {
 		err(1, "format_line");
 	display_line(out_str, out_str_len);
 	clock_gettime(CLOCK_MONOTONIC, &now);
+	ts_last_upd = now;
 
 	proceed_file(STDIN_FILENO, &lineno);
 
