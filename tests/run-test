@@ -35,9 +35,11 @@ esac
 sh "$cmds" | "$@" >$stdout 2>$stderr || { cat "$stderr" >&2; false; }
 
 stderr_okay=true
-diff -u -- "$expected_stderr" "$stderr" || stderr_okay=false
+diff -u -L ${expected_stderr##*/} -L ${stderr##*/} -- "$expected_stderr" "$stderr" ||
+    stderr_okay=false
 
 stdout_okay=true
-diff -u -- "$expected_stdout" "$stdout" || stdout_okay=false
+diff -u -L ${expected_stdout##*/} -L ${stdout##*/} -- "$expected_stdout" "$stdout" ||
+    stdout_okay=false
 
 $stdout_okay && $stderr_okay
