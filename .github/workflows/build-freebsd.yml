@@ -19,7 +19,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug ..
+          cmake --trace-expand --trace-output=CMakeTrace.log -DCMAKE_BUILD_TYPE=Debug ..
           make VERBOSE=1
           make VERBOSE=1 test
 

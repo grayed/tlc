@@ -17,7 +17,7 @@ jobs:
     - name: build
       working-directory: build
       run: |
-        cmake --trace-redirect=CMakeTrace.log -DCMAKE_BUILD_TYPE=Debug ..
+        cmake --trace-expand --trace-redirect=CMakeTrace.log -DCMAKE_BUILD_TYPE=Debug ..
         make VERBOSE=1
         make VERBOSE=1 test
 
