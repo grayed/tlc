@@ -1,9 +1,8 @@
 # OpenBSD build file, for portable builds please use CMake
 PROG =	tlc
 COPTS =	-Wall
-PREFIX ?=	/usr/local
-BINDIR ?=	${PREFIX}/bin
-MANDIR ?=	${PREFIX}/man/man
+BINDIR ?=	/usr/local/bin
+MANDIR ?=	/usr/local/man/man
 
 .include <bsd.prog.mk>
 
