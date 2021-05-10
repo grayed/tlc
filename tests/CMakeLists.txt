@@ -1,3 +1,5 @@
+# This file is generated from (BSD make) Makefile
+
 add_custom_target(prepare-expected-stdout ALL DEPENDS
                   02.expectedout
                   06.expectedout
