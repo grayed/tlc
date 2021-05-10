@@ -58,7 +58,9 @@ clean-${_t}:
 .endfor
 
 CMakeLists.txt: Makefile gen-cmake-test
-	@echo 'add_custom_target(prepare-expected-stdout ALL DEPENDS' >$@
+	@echo '# This file is generated from (BSD make) Makefile' >$@
+	@echo >>$@
+	@echo 'add_custom_target(prepare-expected-stdout ALL DEPENDS' >>$@
 .for _t in ${TESTS_CHECKING_STDOUT}
 	@echo '                  ${EXPECTEDOUT_${_t}}' >>$@
 .endfor
